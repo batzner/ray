@@ -102,9 +102,13 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             shape=(None, ) + observation_space.shape,
             name="cur_obs")
 
+        policy_obs_mask = None
+        if "policy_obs_mask" in self.config:
+            policy_obs_mask = self.config["policy_obs_mask"]
+
         with tf.variable_scope(POLICY_SCOPE) as scope:
             policy_out, self.policy_model = self._build_policy_network(
-                self.cur_observations, observation_space, action_space)
+                self.cur_observations, observation_space, action_space, policy_obs_mask)
             self.policy_vars = _scope_vars(scope.name)
 
         # Noise vars for P network except for layer normalization vars
@@ -145,7 +149,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
         with tf.variable_scope(POLICY_SCOPE, reuse=True) as scope:
             prev_update_ops = set(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
             self.policy_t, _ = self._build_policy_network(
-                self.obs_t, observation_space, action_space)
+                self.obs_t, observation_space, action_space, policy_obs_mask)
             policy_batchnorm_update_ops = list(
                 set(tf.get_collection(tf.GraphKeys.UPDATE_OPS)) -
                 prev_update_ops)
@@ -153,7 +157,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
         # target policy network evaluation
         with tf.variable_scope(POLICY_TARGET_SCOPE) as scope:
             policy_tp1, _ = self._build_policy_network(
-                self.obs_tp1, observation_space, action_space)
+                self.obs_tp1, observation_space, action_space, policy_obs_mask)
             target_policy_vars = _scope_vars(scope.name)
 
         # Action outputs
@@ -416,7 +420,10 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
 
         return q_values, q_model
 
-    def _build_policy_network(self, obs, obs_space, action_space):
+    def _build_policy_network(self, obs, obs_space, action_space, policy_obs_mask):
+        if policy_obs_mask is not None:
+            obs = tf.multiply(obs, policy_obs_mask)
+
         if self.config["use_state_preprocessor"]:
             model = ModelCatalog.get_model({
                 "obs": obs,
