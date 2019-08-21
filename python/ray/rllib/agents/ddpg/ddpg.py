@@ -58,6 +58,9 @@ DEFAULT_CONFIG = with_common_config({
     "critic_hidden_activation": "relu",
     # N-step Q learning
     "n_step": 1,
+    # Mask to be multiplied with the observation before it is given to the
+    # policy network. Will not be applied to the observation for the Q network.
+    "policy_obs_mask": None,
 
     # === Exploration ===
     # Turns on annealing schedule for exploration noise. Exploration is
