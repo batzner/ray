@@ -103,8 +103,8 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             name="cur_obs")
 
         policy_obs_mask = None
-        if "policy_obs_mask" in self.config:
-            policy_obs_mask = self.config["policy_obs_mask"]
+        if "policy_obs_mask" in self.config["env_config"]:
+            policy_obs_mask = self.config["env_config"]["policy_obs_mask"]
 
         with tf.variable_scope(POLICY_SCOPE) as scope:
             policy_out, self.policy_model = self._build_policy_network(
