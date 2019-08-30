@@ -419,6 +419,14 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             q_out = tf.layers.dense(q_out, units=hidden, activation=activation)
         q_values = tf.layers.dense(q_out, units=1, activation=None)
 
+        # Apply custom configurations
+        if "custom_algorithm_config" in self.config["env_config"]:
+            custom_config = self.config["env_config"]["custom_algorithm_config"]
+            clip_q_min = custom_config.get("clip_q_min")
+            clip_q_max = custom_config.get("clip_q_max")
+            q_values = tf.clip_by_value(q_values,
+                                        clip_value_min=clip_q_min,
+                                        clip_value_max=clip_q_max)
         return q_values, q_model
 
     def _build_policy_network(self, obs, obs_space, action_space, policy_obs_mask):
