@@ -426,6 +426,11 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             clip_q_max = custom_config.get("clip_q_max")
             soft_clip = custom_config.get("soft_clip")
             if soft_clip:
+                # The sigmoid function will resemble hard clipping as closely as possible
+                x_shift = (clip_q_max - clip_q_min) / 2 + clip_q_min
+                # x_scale makes the gradient 1 at the symmetric point of the sigmoid
+                x_scale = 4 / (clip_q_max - clip_q_min)
+                q_values = x_scale * (q_values - x_shift)
                 q_values = tf.math.sigmoid(q_values) * (clip_q_max - clip_q_min) + clip_q_min
             else:
                 q_values = tf.clip_by_value(q_values, clip_q_min, clip_q_max)
