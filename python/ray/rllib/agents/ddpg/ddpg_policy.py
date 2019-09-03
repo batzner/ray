@@ -424,7 +424,11 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             custom_config = self.config["env_config"]["custom_algorithm_config"]
             clip_q_min = custom_config.get("clip_q_min")
             clip_q_max = custom_config.get("clip_q_max")
-            q_values = tf.math.sigmoid(q_values) * (clip_q_max - clip_q_min) + clip_q_min
+            soft_clip = custom_config.get("soft_clip")
+            if soft_clip:
+                q_values = tf.math.sigmoid(q_values) * (clip_q_max - clip_q_min) + clip_q_min
+            else:
+                q_values = tf.clip_by_value(q_values, clip_q_min, clip_q_max)
         return q_values, q_model
 
     def _build_policy_network(self, obs, obs_space, action_space, policy_obs_mask):
