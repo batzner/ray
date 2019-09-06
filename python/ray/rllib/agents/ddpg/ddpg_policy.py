@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import time
 from gym.spaces import Box
 import numpy as np
 
@@ -87,10 +88,44 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
         self.global_step = tf.train.get_or_create_global_step()
 
         # use separate optimizers for actor & critic
+        actor_lr = self.config["actor_lr"]
+        critic_lr = self.config["critic_lr"]
+
+        if "custom_algorithm_config" in self.config["env_config"]:
+            custom_config = self.config["env_config"]["custom_algorithm_config"]
+
+            # Set the actor lr decay
+            actor_lr_decay_rate = custom_config.get("actor_lr_decay_rate")
+            actor_lr_decay_hours = custom_config.get("actor_lr_decay_hours")
+            if actor_lr_decay_rate is not None and actor_lr_decay_hours is not None:
+                lr_decay_start_time = time.time()
+
+                def get_actor_lr():
+                    curr_hours = (time.time() - lr_decay_start_time) / 3600
+                    new_lr = self.config["actor_lr"] * (
+                            actor_lr_decay_rate ** (curr_hours / actor_lr_decay_hours))
+                    return new_lr
+
+                actor_lr = tf.cast(tf.py_func(get_actor_lr, [], tf.double), tf.float32)
+
+            # Set the critic lr decay
+            critic_lr_decay_rate = custom_config.get("critic_lr_decay_rate")
+            critic_lr_decay_hours = custom_config.get("critic_lr_decay_hours")
+            if critic_lr_decay_rate is not None and critic_lr_decay_hours is not None:
+                lr_decay_start_time = time.time()
+
+                def get_critic_lr():
+                    curr_hours = (time.time() - lr_decay_start_time) / 3600
+                    new_lr = self.config["critic_lr"] * (
+                            critic_lr_decay_rate ** (curr_hours / critic_lr_decay_hours))
+                    return new_lr
+
+                critic_lr = tf.cast(tf.py_func(get_critic_lr, [], tf.double), tf.float32)
+
         self._actor_optimizer = tf.train.AdamOptimizer(
-            learning_rate=self.config["actor_lr"])
+            learning_rate=actor_lr)
         self._critic_optimizer = tf.train.AdamOptimizer(
-            learning_rate=self.config["critic_lr"])
+            learning_rate=critic_lr)
 
         # Action inputs
         self.stochastic = tf.placeholder(tf.bool, (), name="stochastic")
