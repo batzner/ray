@@ -99,7 +99,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             tf.bool, (), name="pure_exploration_phase")
         self.cur_observations = tf.placeholder(
             tf.float32,
-            shape=(None, ) + observation_space.shape,
+            shape=(None,) + observation_space.shape,
             name="cur_obs")
 
         policy_obs_mask = None
@@ -135,13 +135,13 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
         # Replay inputs
         self.obs_t = tf.placeholder(
             tf.float32,
-            shape=(None, ) + observation_space.shape,
+            shape=(None,) + observation_space.shape,
             name="observation")
         self.act_t = tf.placeholder(
-            tf.float32, shape=(None, ) + action_space.shape, name="action")
+            tf.float32, shape=(None,) + action_space.shape, name="action")
         self.rew_t = tf.placeholder(tf.float32, [None], name="reward")
         self.obs_tp1 = tf.placeholder(
-            tf.float32, shape=(None, ) + observation_space.shape)
+            tf.float32, shape=(None,) + observation_space.shape)
         self.done_mask = tf.placeholder(tf.float32, [None], name="done")
         self.importance_weights = tf.placeholder(
             tf.float32, [None], name="weight")
@@ -217,27 +217,27 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
         if self.config["twin_q"]:
             self.critic_loss, self.actor_loss, self.td_error \
                 = self._build_actor_critic_loss(
-                    q_t, q_tp1, q_t_det_policy, twin_q_t=twin_q_t,
-                    twin_q_tp1=twin_q_tp1)
+                q_t, q_tp1, q_t_det_policy, twin_q_t=twin_q_t,
+                twin_q_tp1=twin_q_tp1)
         else:
             self.critic_loss, self.actor_loss, self.td_error \
                 = self._build_actor_critic_loss(
-                    q_t, q_tp1, q_t_det_policy)
+                q_t, q_tp1, q_t_det_policy)
 
         if config["l2_reg"] is not None:
             for var in self.policy_vars:
                 if "bias" not in var.name:
                     self.actor_loss += (
-                        config["l2_reg"] * 0.5 * tf.nn.l2_loss(var))
+                            config["l2_reg"] * 0.5 * tf.nn.l2_loss(var))
             for var in self.q_func_vars:
                 if "bias" not in var.name:
                     self.critic_loss += (
-                        config["l2_reg"] * 0.5 * tf.nn.l2_loss(var))
+                            config["l2_reg"] * 0.5 * tf.nn.l2_loss(var))
             if self.config["twin_q"]:
                 for var in self.twin_q_func_vars:
                     if "bias" not in var.name:
                         self.critic_loss += (
-                            config["l2_reg"] * 0.5 * tf.nn.l2_loss(var))
+                                config["l2_reg"] * 0.5 * tf.nn.l2_loss(var))
 
         # update_target_fn will be called periodically to copy Q network to
         # target Q network
@@ -362,7 +362,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                                        for (g, v) in critic_grads_and_vars
                                        if g is not None]
         grads_and_vars = self._actor_grads_and_vars \
-            + self._critic_grads_and_vars
+                         + self._critic_grads_and_vars
         return grads_and_vars
 
     @override(TFPolicy)
@@ -508,13 +508,13 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                     normal_sample = tf.random_normal(
                         shape=[action_low.size], mean=0.0, stddev=1.0)
                     ou_new = self.config["exploration_ou_theta"] \
-                        * -exploration_sample \
-                        + self.config["exploration_ou_sigma"] * normal_sample
+                             * -exploration_sample \
+                             + self.config["exploration_ou_sigma"] * normal_sample
                     exploration_value = tf.assign_add(exploration_sample,
                                                       ou_new)
                     base_scale = self.config["exploration_ou_noise_scale"]
                     noise = noise_scale * base_scale \
-                        * exploration_value * action_range
+                            * exploration_value * action_range
                     stochastic_actions = tf.clip_by_value(
                         deterministic_actions + noise,
                         action_low * tf.ones_like(deterministic_actions),
@@ -533,7 +533,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                 tf_range = tf.constant(action_range[None], dtype="float32")
                 tf_low = tf.constant(action_low[None], dtype="float32")
                 uniform_random_actions = uniform_random_actions * tf_range \
-                    + tf_low
+                                         + tf_low
                 return uniform_random_actions
 
             stochastic_actions = tf.cond(
@@ -574,7 +574,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
 
         # compute RHS of bellman equation
         q_t_selected_target = tf.stop_gradient(
-            self.rew_t + gamma**n_step * q_tp1_best_masked)
+            self.rew_t + gamma ** n_step * q_tp1_best_masked)
 
         # compute the error (potentially clipped)
         if twin_q:
@@ -583,7 +583,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             td_error = td_error + twin_td_error
             if use_huber:
                 errors = _huber_loss(td_error, huber_threshold) \
-                    + _huber_loss(twin_td_error, huber_threshold)
+                         + _huber_loss(twin_td_error, huber_threshold)
             else:
                 errors = 0.5 * tf.square(td_error) + 0.5 * tf.square(
                     twin_td_error)
