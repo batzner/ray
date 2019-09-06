@@ -702,9 +702,9 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                 tau_decay_hours = custom_config.get("tau_decay_hours")
                 tau_decay_start = custom_config.get("tau_decay_start")
                 if tau_decay_rate is not None and tau_decay_hours is not None and tau_decay_start is not None:
-                    time_since_start = time.time() - self._tau_decay_start_time - tau_decay_start
-                    if time_since_start > 0:
-                        curr_hours = time_since_start / 3600
+                    seconds_since_start = time.time() - self._tau_decay_start_time - tau_decay_start * 3600
+                    if seconds_since_start > 0:
+                        curr_hours = seconds_since_start / 3600
                         tau = self._initial_tau * (tau_decay_rate ** (curr_hours / tau_decay_hours))
         return self.sess.run(
             self.update_target_expr, feed_dict={self.tau: tau})
