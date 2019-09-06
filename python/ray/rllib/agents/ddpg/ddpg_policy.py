@@ -276,7 +276,8 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
 
         # update_target_fn will be called periodically to copy Q network to
         # target Q network
-        self.tau_value = config.get("tau")
+        self._initial_tau = config.get("tau")
+        self._tau_decay_start_time = time.time()
         self.tau = tf.placeholder(tf.float32, (), name="tau")
         update_target_expr = []
         for var, var_target in zip(
@@ -693,7 +694,15 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
 
     # support both hard and soft sync
     def update_target(self, tau=None):
-        tau = tau or self.tau_value
+        if tau is None:
+            tau = self._initial_tau
+            if "custom_algorithm_config" in self.config["env_config"]:
+                custom_config = self.config["env_config"]["custom_algorithm_config"]
+                tau_decay_rate = custom_config.get("tau_decay_rate")
+                tau_decay_hours = custom_config.get("tau_decay_hours")
+                if tau_decay_rate is not None and tau_decay_hours is not None:
+                    curr_hours = (time.time() - self._tau_decay_start_time) / 3600
+                    tau = self._initial_tau * (tau_decay_rate ** (curr_hours / tau_decay_hours))
         return self.sess.run(
             self.update_target_expr, feed_dict={self.tau: tau})
 
