@@ -107,6 +107,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                     return new_lr
 
                 actor_lr = tf.cast(tf.py_func(get_actor_lr, [], tf.double), tf.float32)
+                actor_lr = tf.stop_gradient(actor_lr)
 
             # Set the critic lr decay
             critic_lr_decay_rate = custom_config.get("critic_lr_decay_rate")
@@ -121,6 +122,7 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                     return new_lr
 
                 critic_lr = tf.cast(tf.py_func(get_critic_lr, [], tf.double), tf.float32)
+                critic_lr = tf.stop_gradient(critic_lr)
 
         self._actor_optimizer = tf.train.AdamOptimizer(
             learning_rate=actor_lr)
@@ -248,6 +250,15 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                     self.obs_tp1, observation_space, action_space,
                     policy_tp1_smoothed)
                 twin_target_q_func_vars = _scope_vars(scope.name)
+
+        # Clip the target q values
+        if "custom_algorithm_config" in self.config["env_config"]:
+            custom_config = self.config["env_config"]["custom_algorithm_config"]
+            clip_target_min = custom_config.get("clip_target_min")
+            clip_target_max = custom_config.get("clip_target_max")
+            q_tp1 = tf.clip_by_value(q_tp1, clip_target_min, clip_target_max)
+            if self.config["twin_q"]:
+                twin_q_tp1 = tf.clip_by_value(twin_q_tp1, clip_target_min, clip_target_max)
 
         if self.config["twin_q"]:
             self.critic_loss, self.actor_loss, self.td_error \
@@ -701,8 +712,10 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                 tau_decay_rate = custom_config.get("tau_decay_rate")
                 tau_decay_hours = custom_config.get("tau_decay_hours")
                 tau_decay_start = custom_config.get("tau_decay_start")
-                if tau_decay_rate is not None and tau_decay_hours is not None and tau_decay_start is not None:
-                    seconds_since_start = time.time() - self._tau_decay_start_time - tau_decay_start * 3600
+                if (tau_decay_rate is not None and tau_decay_hours is not None
+                        and tau_decay_start is not None):
+                    seconds_since_start = (
+                            time.time() - self._tau_decay_start_time - tau_decay_start * 3600)
                     if seconds_since_start > 0:
                         curr_hours = seconds_since_start / 3600
                         tau = self._initial_tau * (tau_decay_rate ** (curr_hours / tau_decay_hours))
