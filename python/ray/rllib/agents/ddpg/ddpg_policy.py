@@ -237,9 +237,10 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                 custom_config = self.config["env_config"]["custom_algorithm_config"]
                 clip_q_det_policy_min = custom_config.get("clip_q_det_policy_min")
                 clip_q_det_policy_max = custom_config.get("clip_q_det_policy_max")
-                q_t_det_policy = tf.clip_by_value(q_t_det_policy,
-                                                  clip_value_min=clip_q_det_policy_min,
-                                                  clip_value_max=clip_q_det_policy_max)
+                if clip_q_det_policy_min is not None:
+                    q_t_det_policy = tf.maximum(q_t_det_policy, clip_q_det_policy_min)
+                if clip_q_det_policy_max is not None:
+                    q_t_det_policy = tf.minimum(q_t_det_policy, clip_q_det_policy_max)
 
         if self.config["twin_q"]:
             with tf.variable_scope(TWIN_Q_SCOPE) as scope:
@@ -266,13 +267,15 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
             custom_config = self.config["env_config"]["custom_algorithm_config"]
             clip_target_min = custom_config.get("clip_target_min")
             clip_target_max = custom_config.get("clip_target_max")
-            q_tp1 = tf.clip_by_value(q_tp1,
-                                     clip_value_min=clip_target_min,
-                                     clip_value_max=clip_target_max)
+            if clip_target_min is not None:
+                q_tp1 = tf.maximum(q_tp1, clip_target_min)
+            if clip_target_max is not None:
+                q_tp1 = tf.minimum(q_tp1, clip_target_max)
             if self.config["twin_q"]:
-                twin_q_tp1 = tf.clip_by_value(twin_q_tp1,
-                                              clip_value_min=clip_target_min,
-                                              clip_value_max=clip_target_max)
+                if clip_target_min is not None:
+                    twin_q_tp1 = tf.maximum(twin_q_tp1, clip_target_min)
+                if clip_target_max is not None:
+                    twin_q_tp1 = tf.minimum(twin_q_tp1, clip_target_max)
 
         if self.config["twin_q"]:
             self.critic_loss, self.actor_loss, self.td_error \
@@ -493,10 +496,11 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
                 x_scale = 4 / (clip_q_max - clip_q_min)
                 q_values = x_scale * (q_values - x_shift)
                 q_values = tf.math.sigmoid(q_values) * (clip_q_max - clip_q_min) + clip_q_min
-            elif clip_q_min is not None or clip_q_max is not None:
-                q_values = tf.clip_by_value(q_values,
-                                            clip_value_min=clip_q_min,
-                                            clip_value_max=clip_q_max)
+            else:
+                if clip_q_min is not None:
+                    q_values = tf.maximum(q_values, clip_q_min)
+                if clip_q_max is not None:
+                    q_values = tf.minimum(q_values, clip_q_max)
         return q_values, q_model
 
     def _build_policy_network(self, obs, obs_space, action_space, policy_obs_mask):
