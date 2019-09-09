@@ -218,6 +218,7 @@ class KLCoeffMixin(object):
             self.kl_coeff_val *= 1.5
         elif sampled_kl < 0.5 * self.kl_target:
             self.kl_coeff_val *= 0.5
+        self.kl_coeff_val = min(self.kl_coeff_val, 3.)
         self.kl_coeff.load(self.kl_coeff_val, session=self.get_session())
         return self.kl_coeff_val
 
