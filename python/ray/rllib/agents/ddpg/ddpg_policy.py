@@ -639,6 +639,13 @@ class DDPGTFPolicy(DDPGPostprocessing, TFPolicy):
         q_tp1_best = tf.squeeze(input=q_tp1, axis=len(q_tp1.shape) - 1)
         q_tp1_best_masked = (1.0 - self.done_mask) * q_tp1_best
 
+        # Apply custom configurations
+        if "custom_algorithm_config" in self.config["env_config"]:
+            custom_config = self.config["env_config"]["custom_algorithm_config"]
+            terminate_in_q_update = custom_config.get("terminate_in_q_update", True)
+            if not terminate_in_q_update:
+                q_tp1_best_masked = q_tp1_best
+
         # compute RHS of bellman equation
         q_t_selected_target = tf.stop_gradient(
             self.rew_t + gamma ** n_step * q_tp1_best_masked)
