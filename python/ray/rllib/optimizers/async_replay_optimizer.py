@@ -234,7 +234,7 @@ class AsyncReplayOptimizer(PolicyOptimizer):
         return sample_timesteps, train_timesteps
 
 
-@ray.remote(num_cpus=0)
+@ray.remote(num_cpus=0, resources={'num_replay_actors': 1})
 class ReplayActor(object):
     """A replay buffer shard.
 
