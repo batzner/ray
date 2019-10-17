@@ -176,7 +176,20 @@ def make_exploration_schedule(config, worker_index):
             # FIXME: what do magic constants mean? (0.4, 7)
             max_index = float(config["num_workers"] - 1)
             exponent = 1 + worker_index / max_index * 7
-            return ConstantSchedule(0.4**exponent)
+
+            default_exploration = 0.4**exponent
+            decay_config = None
+            if "custom_algorithm_config" in self.config["env_config"]:
+                custom_config = self.config["env_config"]["custom_algorithm_config"]
+                decay_config = custom_config.get("decay_per_worker_exploration")
+
+            if decay_config is not None:
+                return LinearSchedule(
+                    schedule_timesteps=int(decay_config["steps"]),
+                    initial_p=default_exploration,
+                    final_p=default_exploration * decay_config["final_scale"])
+            else:
+                return ConstantSchedule(default_exploration)
         else:
             # local ev should have zero exploration so that eval rollouts
             # run properly
