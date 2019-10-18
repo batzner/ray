@@ -179,8 +179,8 @@ def make_exploration_schedule(config, worker_index):
 
             default_exploration = 0.4**exponent
             decay_config = None
-            if "custom_algorithm_config" in self.config["env_config"]:
-                custom_config = self.config["env_config"]["custom_algorithm_config"]
+            if "custom_algorithm_config" in config["env_config"]:
+                custom_config = config["env_config"]["custom_algorithm_config"]
                 decay_config = custom_config.get("decay_per_worker_exploration")
 
             if decay_config is not None:
