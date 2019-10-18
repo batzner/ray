@@ -6,7 +6,7 @@ from ray.rllib.agents.trainer import with_common_config
 from ray.rllib.agents.dqn.dqn import GenericOffPolicyTrainer, \
     update_worker_explorations
 from ray.rllib.agents.ddpg.ddpg_policy import DDPGTFPolicy
-from ray.rllib.utils.schedules import ConstantSchedule, LinearSchedule
+from ray.rllib.utils.schedules import ConstantSchedule, LinearSchedule, PiecewiseSchedule
 
 # yapf: disable
 # __sphinx_doc_begin__
@@ -178,16 +178,16 @@ def make_exploration_schedule(config, worker_index):
             exponent = 1 + worker_index / max_index * 7
 
             default_exploration = 0.4**exponent
-            decay_config = None
+            endpoints = None
             if "custom_algorithm_config" in config["env_config"]:
                 custom_config = config["env_config"]["custom_algorithm_config"]
-                decay_config = custom_config.get("decay_per_worker_exploration")
+                endpoints = custom_config.get("decay_per_worker_exploration")
 
-            if decay_config is not None:
-                return LinearSchedule(
-                    schedule_timesteps=int(decay_config["steps"]),
-                    initial_p=default_exploration,
-                    final_p=default_exploration * decay_config["final_scale"])
+            if endpoints is not None:
+                endpoints = [(t, default_exploration * value) for t, value in endpoints]
+                return PiecewiseSchedule(endpoints=endpoints,
+                                         interpolation=lambda value, _1, _2: value,
+                                         outside_value=endpoints[-1][1])
             else:
                 return ConstantSchedule(default_exploration)
         else:
